@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Git-checkout') {
+            steps {
+                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/saharerahul/Nodejs-Application.git'
+            }
+        }
+        stage('Docker Build') {
+            steps {
+                sh "docker build -t rahulsahare/nodejs-app:latest -f DOCKER/Dockerfile ."
+            }
+        }
+        stage('Docker Push Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {  
+                        sh "docker push rahulsahare/nodejs-app:latest"
+                    }
+                }
+            }
+        }
+        stage('Deploy to Container') {
+            steps {
+                sh '''
+                docker run -d --name nodejs-app-container \
+                  -p 3000:3000 \
+                  rahulsahare/nodejs-app:latest
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Image pushed and deployed successfully!'
+        }
+        failure {
+            echo 'Failed to push image or deploy!'
+        }
+    }
+}
